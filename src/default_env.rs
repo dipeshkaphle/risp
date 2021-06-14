@@ -61,6 +61,36 @@ pub fn default_env() -> Env {
         }),
     );
     env.insert(
+        "fmod".to_string(),
+        Exp::Func(|args| {
+            if args.len() != 2 {
+                return Err(Exceptions::ValueError(
+                    format!("expected two arguments for comparision got {}", args.len())
+                        .to_string(),
+                ));
+            } else {
+                return Ok(Exp::Atom(Atom::Number(Number::Float(
+                    get_float(&args[0])? % get_float(&args[1])?,
+                ))));
+            }
+        }),
+    );
+    env.insert(
+        "mod".to_string(),
+        Exp::Func(|args| {
+            if args.len() != 2 {
+                return Err(Exceptions::ValueError(
+                    format!("expected two arguments for comparision got {}", args.len())
+                        .to_string(),
+                ));
+            } else {
+                return Ok(Exp::Atom(Atom::Number(Number::Int(
+                    get_int(&args[0])? % get_int(&args[1])?,
+                ))));
+            }
+        }),
+    );
+    env.insert(
         ">".to_string(),
         Exp::Func(|args| binary_cmp(args, |x, y| x > y)),
     );

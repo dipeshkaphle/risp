@@ -42,6 +42,28 @@ fn read_from_tokens(tokens: &mut Vec<String>) -> Result<Exp, Exceptions> {
     }
 }
 
+fn validate_parens(program: &str) -> bool {
+    if program.starts_with("(") && !program.ends_with(")") {
+        return false;
+    }
+    let mut stack: Vec<char> = vec![];
+
+    for x in program.chars() {
+        if x == '(' {
+            stack.push('(');
+        } else if stack.is_empty() && x == ')' {
+            return false;
+        } else if !stack.is_empty() && *stack.last().unwrap() == '(' && x == ')' {
+            stack.pop();
+        }
+    }
+    return stack.is_empty();
+}
+
 pub fn parse(program: String) -> Result<Exp, Exceptions> {
-    return read_from_tokens(&mut tokenize(&program));
+    if validate_parens(&program[..]) {
+        return read_from_tokens(&mut tokenize(&program));
+    } else {
+        return Err(Exceptions::SyntaxError("Non matching parens".to_string()));
+    }
 }

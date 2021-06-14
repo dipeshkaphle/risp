@@ -46,6 +46,20 @@ impl To_Float for Exp {
         None
     }
 }
+pub trait To_Int {
+    fn to_i64(&self) -> Option<i64>;
+}
+impl To_Int for Exp {
+    fn to_i64(&self) -> Option<i64> {
+        if let Exp::Atom(Atom::Number(y)) = self {
+            match y {
+                Number::Int(z) => return Some(*z),
+                Number::Float(z) => return Some(*z as i64),
+            }
+        }
+        None
+    }
+}
 pub trait To_Bool {
     fn to_bool(&self) -> Option<bool>;
 }
@@ -64,6 +78,10 @@ pub fn get_bool(x: &Exp) -> Result<bool, Exceptions> {
 }
 pub fn get_float(x: &Exp) -> Result<f64, Exceptions> {
     x.to_f64()
+        .ok_or(Exceptions::ValueError("Not a number".to_string()))
+}
+pub fn get_int(x: &Exp) -> Result<i64, Exceptions> {
+    x.to_i64()
         .ok_or(Exceptions::ValueError("Not a number".to_string()))
 }
 
