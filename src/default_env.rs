@@ -60,7 +60,68 @@ pub fn default_env() -> Env {
             }
         }),
     );
+    env.insert(
+        ">".to_string(),
+        Exp::Func(|args| binary_cmp(args, |x, y| x > y)),
+    );
+    env.insert(
+        "<".to_string(),
+        Exp::Func(|args| binary_cmp(args, |x, y| x < y)),
+    );
+    env.insert(
+        "=".to_string(),
+        Exp::Func(|args| binary_cmp(args, |x, y| x == y)),
+    );
+    env.insert(
+        ">=".to_string(),
+        Exp::Func(|args| binary_cmp(args, |x, y| x >= y)),
+    );
+    env.insert(
+        "<=".to_string(),
+        Exp::Func(|args| binary_cmp(args, |x, y| x <= y)),
+    );
+    env.insert(
+        "and".to_string(),
+        Exp::Func(|args| logical_bin_ops(args, |x, y| x && y)),
+    );
+    env.insert(
+        "or".to_string(),
+        Exp::Func(|args| logical_bin_ops(args, |x, y| x && y)),
+    );
+    env.insert(
+        "not".to_string(),
+        Exp::Func(|args| {
+            if args.len() != 1 {
+                return Err(Exceptions::ValueError(
+                    format!("expected 1 arguments for comparision got {}", args.len()).to_string(),
+                ));
+            } else {
+                let operand = get_bool(&args[0])?;
+                return Ok(Exp::Atom(Atom::Bool(!operand)));
+            }
+        }),
+    );
     env
+}
+
+fn logical_bin_ops(args: &[Exp], f: fn(bool, bool) -> bool) -> Result<Exp, Exceptions> {
+    let evaluated: Result<Vec<bool>, Exceptions> = args
+        .into_iter()
+        .map(|x| -> Result<bool, Exceptions> { get_bool(x) })
+        .collect();
+    let ans = evaluated?.iter().fold(true, |acc, x| f(acc, *x));
+    return Ok(Exp::Atom(Atom::Bool(ans)));
+}
+
+fn binary_cmp(args: &[Exp], f: fn(f64, f64) -> bool) -> Result<Exp, Exceptions> {
+    if args.len() != 2 {
+        return Err(Exceptions::ValueError(
+            format!("expected two arguments for comparision got {}", args.len()).to_string(),
+        ));
+    } else {
+        let (a, b) = (get_float(&args[0])?, get_float(&args[1])?);
+        return Ok(Exp::Atom(Atom::Bool(f(a, b))));
+    }
 }
 
 fn binary_op_arith(args: &[Exp], init: f64, f: fn(f64, f64) -> f64) -> Result<Exp, Exceptions> {

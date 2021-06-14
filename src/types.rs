@@ -46,7 +46,22 @@ impl To_Float for Exp {
         None
     }
 }
+pub trait To_Bool {
+    fn to_bool(&self) -> Option<bool>;
+}
 
+impl To_Bool for Exp {
+    fn to_bool(&self) -> Option<bool> {
+        if let Exp::Atom(Atom::Bool(y)) = self {
+            return Some(*y);
+        }
+        None
+    }
+}
+pub fn get_bool(x: &Exp) -> Result<bool, Exceptions> {
+    x.to_bool()
+        .ok_or(Exceptions::ValueError("Not a boolean".to_string()))
+}
 pub fn get_float(x: &Exp) -> Result<f64, Exceptions> {
     x.to_f64()
         .ok_or(Exceptions::ValueError("Not a number".to_string()))
