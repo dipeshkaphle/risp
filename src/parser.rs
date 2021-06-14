@@ -13,9 +13,11 @@ fn atom(token: String) -> Atom {
         Ok(x) => return Atom::Number(Number::Int(*x)),
         Err(_) => match &token.parse::<f64>() {
             Ok(x) => return Atom::Number(Number::Float(*x)),
-            Err(_) => {
-                return Atom::Symbol(token);
-            }
+            Err(_) => match &token[..] {
+                "#t" => Atom::Bool(true),
+                "#f" => Atom::Bool(false),
+                _ => Atom::Symbol(token),
+            },
         },
     }
 }

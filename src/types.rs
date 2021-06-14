@@ -18,6 +18,7 @@ pub enum Number {
 }
 #[derive(Debug, Clone)]
 pub enum Atom {
+    Bool(bool),
     Symbol(Symbol),
     Number(Number),
 }
@@ -58,6 +59,10 @@ impl fmt::Display for Exp {
                 Atom::Symbol(y) => y.clone(),
                 Atom::Number(Number::Int(y)) => y.to_string(),
                 Atom::Number(Number::Float(y)) => y.to_string(),
+                Atom::Bool(x) => match x {
+                    true => "#t".to_string(),
+                    false => "#f".to_string(),
+                },
             },
             Exp::List(x) => {
                 let str_form: Vec<String> =

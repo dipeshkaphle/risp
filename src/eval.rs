@@ -6,6 +6,7 @@ pub fn eval(exp: &Exp, env: &Env) -> Result<Exp, Exceptions> {
             Atom::Symbol(y) => env.get(y).map(|z| z.clone()).ok_or(Exceptions::ValueError(
                 format!("{} is not a valid symbol", y).to_string(),
             )),
+            Atom::Bool(_) => Err(Exceptions::ValueError("Bool is not a number".to_string())),
             _ => Ok(exp.clone()),
         },
         Exp::List(x) => {
