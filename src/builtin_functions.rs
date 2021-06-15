@@ -1,4 +1,5 @@
 use super::types::*;
+use std::{f64, i64};
 pub fn logical_bin_ops(args: &[Exp], f: fn(bool, bool) -> bool) -> Result<Exp, Exceptions> {
     let evaluated: Result<Vec<bool>, Exceptions> = args
         .into_iter()
@@ -77,36 +78,57 @@ pub fn divide(args: &[Exp]) -> Result<Exp, Exceptions> {
 }
 
 pub fn fmod(args: &[Exp]) -> Result<Exp, Exceptions> {
-    if args.len() != 2 {
-        return Err(Exceptions::ValueError(
-            format!("expected two arguments for comparision got {}", args.len()).to_string(),
-        ));
-    } else {
-        return Ok(Exp::Atom(Atom::Number(Number::Float(
-            get_float(&args[0])? % get_float(&args[1])?,
-        ))));
-    }
+    let _ = expect_x_args(2, "fmod", args)?;
+    return Ok(Exp::Atom(Atom::Number(Number::Float(
+        get_float(&args[0])? % get_float(&args[1])?,
+    ))));
 }
 
 pub fn mod_int(args: &[Exp]) -> Result<Exp, Exceptions> {
-    if args.len() != 2 {
-        return Err(Exceptions::ValueError(
-            format!("expected two arguments for comparision got {}", args.len()).to_string(),
-        ));
-    } else {
-        return Ok(Exp::Atom(Atom::Number(Number::Int(
-            get_int(&args[0])? % get_int(&args[1])?,
-        ))));
-    }
+    let _ = expect_x_args(2, "mod", args)?;
+    return Ok(Exp::Atom(Atom::Number(Number::Int(
+        get_int(&args[0])? % get_int(&args[1])?,
+    ))));
 }
 
 pub fn logical_not(args: &[Exp]) -> Result<Exp, Exceptions> {
-    if args.len() != 1 {
+    let _ = expect_x_args(1, "not", args)?;
+    let operand = get_bool(&args[0])?;
+    return Ok(Exp::Atom(Atom::Bool(!operand)));
+}
+
+pub fn absolute_val(args: &[Exp]) -> Result<Exp, Exceptions> {
+    let _ = expect_x_args(1, "abs", args)?;
+    match &args[0] {
+        Exp::Atom(Atom::Number(x)) => match x {
+            Number::Int(y) => Ok(Exp::Atom(Atom::Number(Number::Int(y.abs())))),
+            Number::Float(y) => Ok(Exp::Atom(Atom::Number(Number::Float(y.abs())))),
+        },
+        _ => Err(Exceptions::ValueError(
+            "Number not provided to abs".to_string(),
+        )),
+    }
+}
+
+pub fn power(args: &[Exp]) -> Result<Exp, Exceptions> {
+    let _ = expect_x_args(2, "expt", args)?;
+    return Ok(Exp::Atom(Atom::Number(Number::Float(
+        get_float(&args[0])?.powf(get_float(&args[1])?),
+    ))));
+}
+
+pub fn expect_x_args(x: usize, func_name: &str, args: &[Exp]) -> Result<usize, Exceptions> {
+    if args.len() != x {
         return Err(Exceptions::ValueError(
-            format!("expected 1 arguments for comparision got {}", args.len()).to_string(),
+            format!(
+                "expected {} arguments for {}, got {}",
+                x,
+                func_name,
+                args.len()
+            )
+            .to_string(),
         ));
     } else {
-        let operand = get_bool(&args[0])?;
-        return Ok(Exp::Atom(Atom::Bool(!operand)));
+        Ok(x)
     }
 }
