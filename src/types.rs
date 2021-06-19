@@ -1,8 +1,5 @@
 use std::collections::HashMap;
-use std::error::Error;
 use std::fmt;
-use std::fmt::format;
-use std::io;
 
 pub type Symbol = String;
 
@@ -30,7 +27,7 @@ pub enum Exp {
 }
 
 // credits : https://www.reddit.com/r/rust/comments/3vchld/how_to_check_if_two_borrowed_objects_are_the_same/
-fn is_same_object<T>(a: &T, b: &T) -> bool {
+fn _is_same_object<T>(a: &T, b: &T) -> bool {
     a as *const T == b as *const T
 }
 impl PartialEq for Exp {
@@ -63,11 +60,11 @@ impl PartialEq for Exp {
 
 pub type Env = HashMap<String, Exp>;
 
-pub trait To_Float {
+pub trait ToFloat {
     fn to_f64(&self) -> Option<f64>;
 }
 
-impl To_Float for Exp {
+impl ToFloat for Exp {
     fn to_f64(&self) -> Option<f64> {
         if let Exp::Atom(Atom::Number(y)) = self {
             match y {
@@ -78,10 +75,10 @@ impl To_Float for Exp {
         None
     }
 }
-pub trait To_Int {
+pub trait ToInt {
     fn to_i64(&self) -> Option<i64>;
 }
-impl To_Int for Exp {
+impl ToInt for Exp {
     fn to_i64(&self) -> Option<i64> {
         if let Exp::Atom(Atom::Number(y)) = self {
             match y {
@@ -92,11 +89,11 @@ impl To_Int for Exp {
         None
     }
 }
-pub trait To_Bool {
+pub trait ToBool {
     fn to_bool(&self) -> Option<bool>;
 }
 
-impl To_Bool for Exp {
+impl ToBool for Exp {
     fn to_bool(&self) -> Option<bool> {
         if let Exp::Atom(Atom::Bool(y)) = self {
             return Some(*y);

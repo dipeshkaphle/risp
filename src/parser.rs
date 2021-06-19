@@ -1,5 +1,3 @@
-use std::mem::uninitialized;
-
 use super::types::*;
 fn tokenize(chars: &str) -> Vec<String> {
     chars
@@ -35,6 +33,9 @@ fn read_from_tokens(tokens: &mut Vec<String>) -> Result<Exp, Exceptions> {
         let mut l = Vec::new();
         while tokens[0] != ")" {
             l.push(read_from_tokens(tokens).unwrap());
+            if tokens.is_empty() {
+                return Err(Exceptions::SyntaxError("Non matching parens".to_string()));
+            }
         }
         tokens.remove(0);
         return Ok(Exp::List(l));
@@ -50,7 +51,7 @@ fn read_from_tokens(tokens: &mut Vec<String>) -> Result<Exp, Exceptions> {
     }
 }
 
-fn get_matching_parens_and_remaining(program: &str) -> Option<(&str, &str)> {
+fn _get_matching_parens_and_remaining(program: &str) -> Option<(&str, &str)> {
     if !program.starts_with("(") {
         return None;
     } else {

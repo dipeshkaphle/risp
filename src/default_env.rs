@@ -64,6 +64,19 @@ pub fn default_env() -> Env {
     env.insert("cons".to_string(), Exp::Func(|args| cons(args)));
     env.insert("equal?".to_string(), Exp::Func(|args| equal(args)));
     env.insert("length".to_string(), Exp::Func(|args| length(args)));
+    env.insert("list?".to_string(), Exp::Func(|args| is_list(args)));
+    env.insert(
+        "max".to_string(),
+        Exp::Func(|args| min_max(args, "max", |x: f64, y: f64| x.max(y))),
+    );
+    env.insert(
+        "min".to_string(),
+        Exp::Func(|args| min_max(args, "min", |x: f64, y: f64| x.min(y))),
+    );
+    env.insert("null?".to_string(), Exp::Func(|args| is_null(args)));
+    env.insert("number?".to_string(), Exp::Func(|args| is_number(args)));
+    env.insert("procedure?".to_string(), Exp::Func(|args| is_proc(args)));
+    env.insert("bool?".to_string(), Exp::Func(|args| is_bool(args)));
 
     env
 }

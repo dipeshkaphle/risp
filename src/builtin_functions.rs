@@ -204,11 +204,73 @@ pub fn length(args: &[Exp]) -> Result<Exp, Exceptions> {
     }
 }
 
+pub fn is_list(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(1, "list?", args)?;
+    if let Exp::List(_) = &args[0] {
+        return Ok(Exp::Atom(Atom::Bool(true)));
+    } else {
+        return Ok(Exp::Atom(Atom::Bool(false)));
+    }
+}
+
 pub fn car(args: &[Exp]) -> Result<Exp, Exceptions> {
     return Ok(head_tails(args)?.0.clone());
 }
 pub fn cdr(args: &[Exp]) -> Result<Exp, Exceptions> {
     return Ok(Exp::List(head_tails(args)?.1.to_vec()));
+}
+pub fn is_null(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(1, "null?", args)?;
+    if let Exp::List(lst) = &args[0] {
+        Ok(Exp::Atom(Atom::Bool(lst.is_empty())))
+    } else {
+        Ok(Exp::Atom(Atom::Bool(false)))
+    }
+}
+
+pub fn min_max(args: &[Exp], funcname: &str, f: fn(f64, f64) -> f64) -> Result<Exp, Exceptions> {
+    expect_atleast_x_args(1, funcname, args)?;
+    let evaluated: Result<Vec<f64>, Exceptions> = args
+        .into_iter()
+        .map(|x| -> Result<f64, Exceptions> { get_float(x) })
+        .collect();
+    let evaluated = evaluated?;
+    let mut ans = evaluated[0].clone();
+    for elem in evaluated {
+        ans = f(ans, elem);
+    }
+    let rounded_down = ans.floor();
+    if ans == rounded_down {
+        return Ok(Exp::Atom(Atom::Number(Number::Int(rounded_down as i64))));
+    } else {
+        return Ok(Exp::Atom(Atom::Number(Number::Float(ans))));
+    }
+}
+
+pub fn is_number(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(1, "number?", args)?;
+    if let Exp::Atom(Atom::Number(_)) = &args[0] {
+        Ok(Exp::Atom(Atom::Bool(true)))
+    } else {
+        Ok(Exp::Atom(Atom::Bool(false)))
+    }
+}
+
+pub fn is_proc(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(1, "procedure?", args)?;
+    if let Exp::Func(_) = &args[0] {
+        Ok(Exp::Atom(Atom::Bool(true)))
+    } else {
+        Ok(Exp::Atom(Atom::Bool(false)))
+    }
+}
+pub fn is_bool(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(1, "procedure?", args)?;
+    if let Exp::Atom(Atom::Bool(_)) = &args[0] {
+        Ok(Exp::Atom(Atom::Bool(true)))
+    } else {
+        Ok(Exp::Atom(Atom::Bool(false)))
+    }
 }
 
 pub fn expect_x_args(x: usize, func_name: &str, args: &[Exp]) -> Result<usize, Exceptions> {
@@ -216,6 +278,21 @@ pub fn expect_x_args(x: usize, func_name: &str, args: &[Exp]) -> Result<usize, E
         return Err(Exceptions::ValueError(
             format!(
                 "expected {} arguments for {}, got {}",
+                x,
+                func_name,
+                args.len()
+            )
+            .to_string(),
+        ));
+    } else {
+        Ok(x)
+    }
+}
+pub fn expect_atleast_x_args(x: usize, func_name: &str, args: &[Exp]) -> Result<usize, Exceptions> {
+    if args.len() < x {
+        return Err(Exceptions::ValueError(
+            format!(
+                "expected at least {} arguments for {}, got {}",
                 x,
                 func_name,
                 args.len()
