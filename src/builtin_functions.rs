@@ -117,6 +117,100 @@ pub fn power(args: &[Exp]) -> Result<Exp, Exceptions> {
     ))));
 }
 
+pub fn begin(args: &[Exp]) -> Result<Exp, Exceptions> {
+    if args.is_empty() {
+        return Err(Exceptions::ValueError(
+            "Expected atleast one expression after begin".to_string(),
+        ));
+    } else {
+        return Ok(args.last().unwrap().clone());
+    }
+}
+
+pub fn append(args: &[Exp]) -> Result<Exp, Exceptions> {
+    let mut ret_list = vec![];
+    for exps in args {
+        match exps {
+            Exp::List(vals) => {
+                for e in vals {
+                    ret_list.push(e.clone());
+                }
+            }
+            _ => ret_list.push(exps.clone()),
+        }
+    }
+    Ok(Exp::List(ret_list))
+}
+
+pub fn apply(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(2, "apply", args)?;
+    if let Exp::Func(f) = &args[0] {
+        if let Exp::List(params) = &args[1] {
+            return f(params);
+        } else {
+            return Err(Exceptions::ValueError(
+                "Expected a list as second argument to apply. Got something else".to_string(),
+            ));
+        }
+    } else {
+        return Err(Exceptions::ValueError(
+            "Expected the first argument for apply to be a function".to_string(),
+        ));
+    }
+}
+
+pub fn cons(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(2, "cons", args)?;
+    if let Exp::List(lst) = &args[1] {
+        let ret_list = [[args[0].clone()].to_vec(), lst.clone()].concat();
+        Ok(Exp::List(ret_list))
+    } else {
+        return Err(Exceptions::ValueError(
+            "Expected a list as second argument to cons. Got something else".to_string(),
+        ));
+    }
+}
+
+fn head_tails<'a>(args: &'a [Exp]) -> Result<(&'a Exp, &'a [Exp]), Exceptions> {
+    let _ = expect_x_args(1, "car", args)?;
+    if let Exp::List(lst) = &args[0] {
+        let (head, tails) = lst
+            .split_first()
+            .ok_or(Exceptions::ValueError(
+                "The list should have length atleast 1".to_string(),
+            ))
+            .unwrap();
+        return Ok((head, tails));
+    } else {
+        Err(Exceptions::ValueError(
+            "Expected a list after car".to_string(),
+        ))
+    }
+}
+
+pub fn equal(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(2, "equal?", args)?;
+    return Ok(Exp::Atom(Atom::Bool(&args[0] == &args[1])));
+}
+
+pub fn length(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(1, "length", args)?;
+    if let Exp::List(lst) = &args[0] {
+        Ok(Exp::Atom(Atom::Number(Number::Int(lst.len() as i64))))
+    } else {
+        Err(Exceptions::ValueError(
+            "non list type passed to length function".to_string(),
+        ))
+    }
+}
+
+pub fn car(args: &[Exp]) -> Result<Exp, Exceptions> {
+    return Ok(head_tails(args)?.0.clone());
+}
+pub fn cdr(args: &[Exp]) -> Result<Exp, Exceptions> {
+    return Ok(Exp::List(head_tails(args)?.1.to_vec()));
+}
+
 pub fn expect_x_args(x: usize, func_name: &str, args: &[Exp]) -> Result<usize, Exceptions> {
     if args.len() != x {
         return Err(Exceptions::ValueError(

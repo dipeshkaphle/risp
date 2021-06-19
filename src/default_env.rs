@@ -56,5 +56,14 @@ pub fn default_env() -> Env {
         Exp::Func(|args| logical_bin_ops(args, |x, y| x && y)),
     );
     env.insert("not".to_string(), Exp::Func(|args| logical_not(args)));
+    env.insert("begin".to_string(), Exp::Func(|args| begin(args)));
+    env.insert("append".to_string(), Exp::Func(|args| append(args)));
+    env.insert("car".to_string(), Exp::Func(|args| car(args)));
+    env.insert("cdr".to_string(), Exp::Func(|args| cdr(args)));
+    env.insert("apply".to_string(), Exp::Func(|args| apply(args)));
+    env.insert("cons".to_string(), Exp::Func(|args| cons(args)));
+    env.insert("equal?".to_string(), Exp::Func(|args| equal(args)));
+    env.insert("length".to_string(), Exp::Func(|args| length(args)));
+
     env
 }

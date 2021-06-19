@@ -1,8 +1,11 @@
+use std::mem::uninitialized;
+
 use super::types::*;
 fn tokenize(chars: &str) -> Vec<String> {
     chars
         .replace("(", "( ")
         .replace(")", " )")
+        .replace("'", "' ")
         .split_whitespace()
         .map(|x| String::from(x))
         .collect()
@@ -37,33 +40,49 @@ fn read_from_tokens(tokens: &mut Vec<String>) -> Result<Exp, Exceptions> {
         return Ok(Exp::List(l));
     } else if token == ")" {
         return Err(Exceptions::SyntaxError("Unexpected )".to_string()));
+    } else if token == "'" {
+        let mut lst = vec![];
+        lst.push(Exp::Atom(Atom::Symbol("quote".to_string())));
+        lst.push(read_from_tokens(tokens).unwrap());
+        return Ok(Exp::List(lst));
     } else {
         return Ok(Exp::Atom(atom(token)));
     }
 }
 
-fn validate_parens(program: &str) -> bool {
-    if program.starts_with("(") && !program.ends_with(")") {
-        return false;
-    }
-    let mut stack: Vec<char> = vec![];
-
-    for x in program.chars() {
-        if x == '(' {
-            stack.push('(');
-        } else if stack.is_empty() && x == ')' {
-            return false;
-        } else if !stack.is_empty() && *stack.last().unwrap() == '(' && x == ')' {
-            stack.pop();
+fn get_matching_parens_and_remaining(program: &str) -> Option<(&str, &str)> {
+    if !program.starts_with("(") {
+        return None;
+    } else {
+        let mut stack: Vec<char> = vec![];
+        let mut ends_at = 0;
+        for x in program.chars() {
+            if x == '(' {
+                stack.push('(');
+            } else if !stack.is_empty() && *stack.last().unwrap() == '(' && x == ')' {
+                stack.pop();
+            }
+            ends_at += 1;
+            if stack.is_empty() {
+                break;
+            }
         }
+        return Some((&program[..ends_at], &program[ends_at..]));
     }
-    return stack.is_empty();
 }
 
 pub fn parse(program: String) -> Result<Exp, Exceptions> {
-    if validate_parens(&program[..]) {
-        return read_from_tokens(&mut tokenize(&program));
+    let mut tokenized = tokenize(&program);
+    let ans = read_from_tokens(&mut tokenized);
+    if tokenized.is_empty() {
+        ans
     } else {
-        return Err(Exceptions::SyntaxError("Non matching parens".to_string()));
+        Err(Exceptions::SyntaxError(
+            format!(
+                "Non matching parens or invalid expression : '{}'",
+                tokenized.join(" ")
+            )
+            .to_string(),
+        ))
     }
 }

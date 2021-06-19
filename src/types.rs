@@ -11,12 +11,12 @@ pub enum Exceptions {
     ValueError(String),
     SyntaxError(String),
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Number {
     Int(i64),
     Float(f64),
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Atom {
     Bool(bool),
     Symbol(Symbol),
@@ -27,6 +27,38 @@ pub enum Exp {
     Atom(Atom),
     List(Vec<Exp>),
     Func(fn(&[Exp]) -> Result<Exp, Exceptions>),
+}
+
+// credits : https://www.reddit.com/r/rust/comments/3vchld/how_to_check_if_two_borrowed_objects_are_the_same/
+fn is_same_object<T>(a: &T, b: &T) -> bool {
+    a as *const T == b as *const T
+}
+impl PartialEq for Exp {
+    fn eq(&self, other: &Self) -> bool {
+        match &self {
+            Exp::Func(x) => {
+                if let Exp::Func(other_at) = &other {
+                    return (*other_at as usize) == (*x as usize);
+                } else {
+                    return false;
+                }
+            }
+            Exp::Atom(at) => {
+                if let Exp::Atom(other_at) = other {
+                    return at == other_at;
+                } else {
+                    return false;
+                }
+            }
+            Exp::List(lst) => {
+                if let Exp::List(other_lst) = other {
+                    return lst == other_lst;
+                } else {
+                    return false;
+                }
+            }
+        }
+    }
 }
 
 pub type Env = HashMap<String, Exp>;
@@ -100,7 +132,7 @@ impl fmt::Display for Exp {
             Exp::List(x) => {
                 let str_form: Vec<String> =
                     x.iter().map(|a| format!("{}", a).to_string()).collect();
-                str_form.join(" ")
+                "(".to_string() + &str_form.join(" ") + ")"
             }
             Exp::Func(_) => "Func".to_string(),
         };

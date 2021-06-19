@@ -22,12 +22,21 @@ pub fn eval(exp: &Exp, env: &mut Env) -> Result<Exp, Exceptions> {
                 ));
             } else {
                 let (first, rest) = x.split_first().unwrap();
-
                 match first {
                     Exp::Atom(Atom::Symbol(s)) => match &s[..] {
                         "if" => if_handler(x, env),
                         "define" => define_handler(x, env),
+                        "quote" => {
+                            if rest.is_empty() {
+                                Err(Exceptions::ValueError(
+                                    "Expected something after quote".to_string(),
+                                ))
+                            } else {
+                                Ok(rest[0].clone())
+                            }
+                        }
                         _ => {
+                            // must be a function
                             let f = eval(first, env)?;
                             if let Exp::Func(function) = f {
                                 let rest_evaluated: Result<Vec<Exp>, Exceptions> =
@@ -41,9 +50,10 @@ pub fn eval(exp: &Exp, env: &mut Env) -> Result<Exp, Exceptions> {
                         }
                     },
                     _ => {
+                        // invalid expression
                         return Err(Exceptions::ValueError(
                             format!(
-                                "First thing in a list should be a keyword or a function not {}",
+                                "First thing in an expression should be a keyword or a function not {}",
                                 first
                             )
                             .to_string(),
@@ -82,8 +92,9 @@ fn define_handler(args: &[Exp], env: &mut Env) -> Result<Exp, Exceptions> {
     if args.len() == 3 {
         let (symbol, exp) = (&args[1], &args[2]);
         if let Exp::Atom(Atom::Symbol(x)) = symbol {
-            env.insert(x.clone(), exp.clone());
-            Ok(exp.clone())
+            let evaluated_exp = eval(exp, env)?;
+            env.insert(x.clone(), evaluated_exp.clone());
+            Ok(evaluated_exp)
         } else {
             return Err(Exceptions::ValueError(
                 format!(
