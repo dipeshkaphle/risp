@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 pub type Symbol = String;
+pub type Env = HashMap<String, Exp>;
 
 #[derive(Debug, Clone)]
 pub enum Exceptions {
@@ -19,11 +20,13 @@ pub enum Atom {
     Symbol(Symbol),
     Number(Number),
 }
+
 #[derive(Clone)]
 pub enum Exp {
     Atom(Atom),
     List(Vec<Exp>),
     Func(fn(&[Exp]) -> Result<Exp, Exceptions>),
+    Procedure((Vec<String>, Box<Exp>)),
 }
 
 // credits : https://www.reddit.com/r/rust/comments/3vchld/how_to_check_if_two_borrowed_objects_are_the_same/
@@ -36,6 +39,13 @@ impl PartialEq for Exp {
             Exp::Func(x) => {
                 if let Exp::Func(other_at) = &other {
                     return (*other_at as usize) == (*x as usize);
+                } else {
+                    return false;
+                }
+            }
+            Exp::Procedure(p) => {
+                if let Exp::Procedure(other_at) = &other {
+                    return p == other_at;
                 } else {
                     return false;
                 }
@@ -58,7 +68,39 @@ impl PartialEq for Exp {
     }
 }
 
-pub type Env = HashMap<String, Exp>;
+pub struct Environment {
+    maps: Vec<Env>,
+}
+impl Environment {
+    pub fn new() -> Self {
+        Environment {
+            maps: vec![HashMap::new()],
+        }
+    }
+
+    pub fn insert(&mut self, key: String, val: Exp) -> Option<Exp> {
+        self.maps.last_mut().unwrap().insert(key, val)
+    }
+
+    pub fn get(&self, key: &String) -> Option<&Exp> {
+        let i = &self.maps.len();
+        for map_index in (0..(*i)).rev() {
+            if let Some(x) = self.maps[map_index].get(key) {
+                return Some(x);
+            } else {
+                continue;
+            }
+        }
+        return None;
+    }
+
+    pub fn push_stack_frame(&mut self, new_frame_data: Env) {
+        self.maps.push(new_frame_data);
+    }
+    pub fn pop_stack_frame(&mut self) {
+        self.maps.pop();
+    }
+}
 
 pub trait ToFloat {
     fn to_f64(&self) -> Option<f64>;
@@ -132,6 +174,7 @@ impl fmt::Display for Exp {
                 "(".to_string() + &str_form.join(" ") + ")"
             }
             Exp::Func(_) => "Func".to_string(),
+            Exp::Procedure(_) => "Proc".to_string(),
         };
         write!(f, "{}", s)
     }

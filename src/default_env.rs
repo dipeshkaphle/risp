@@ -1,10 +1,9 @@
 use super::builtin_functions::*;
 use super::types::*;
-use std::collections::HashMap;
 use std::f64;
 
-pub fn default_env() -> Env {
-    let mut env: Env = HashMap::new();
+pub fn default_env() -> Environment {
+    let mut env: Environment = Environment::new();
     env.insert(
         "pi".to_string(),
         Exp::Atom(Atom::Number(Number::Float(f64::consts::PI))),
