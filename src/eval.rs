@@ -38,6 +38,33 @@ pub fn eval(exp: &Exp, env: &mut Environment) -> Result<Exp, Exceptions> {
                                 Ok(rest[0].clone())
                             }
                         }
+                        "set!" => {
+                            if rest.len() != 2 {
+                                Err(Exceptions::ValueError(
+                                    "Expected 2 things after set!,symbol followed by an expression"
+                                        .to_string(),
+                                ))
+                            } else {
+                                if let Exp::Atom(Atom::Symbol(x)) = &rest[0] {
+                                    let evaluated_exp = eval(&rest[1], env)?;
+                                    if env.exists(x) {
+                                        env.insert(x.clone(), evaluated_exp.clone());
+                                        Ok(evaluated_exp)
+                                    } else {
+                                        Err(Exceptions::ValueError(
+                                            " set!: assignment disallowed\
+                                                , cannot set variable before its definition "
+                                                .to_string(),
+                                        ))
+                                    }
+                                } else {
+                                    Err(Exceptions::ValueError(
+                                        "Expected a symbol after set!, got something else"
+                                            .to_string(),
+                                    ))
+                                }
+                            }
+                        }
                         "lambda" => {
                             // two lists
                             // one for params and another is body
@@ -69,17 +96,11 @@ pub fn eval(exp: &Exp, env: &mut Environment) -> Result<Exp, Exceptions> {
                                     "Expected a params LIST after lambda keyword".to_string(),
                                 ));
                             }
-
-                            // unimplemented!()
                         }
                         _ => {
                             // must be a function
                             match f? {
-                                Exp::Func(function) => {
-                                    let rest_evaluated: Result<Vec<Exp>, Exceptions> =
-                                        rest.iter().map(|x| eval(x, env)).collect();
-                                    return function(&rest_evaluated?);
-                                }
+                                Exp::Func(function) => func_handler(function, rest, env),
                                 Exp::Procedure(proc) => proc_handler(&proc, rest, env),
                                 _ => {
                                     return Err(Exceptions::ValueError(
@@ -89,19 +110,17 @@ pub fn eval(exp: &Exp, env: &mut Environment) -> Result<Exp, Exceptions> {
                             }
                         }
                     },
+                    Exp::Procedure(proc) => proc_handler(proc, rest, env),
+                    Exp::Func(func) => func_handler(*func, rest, env),
                     _ => {
                         // invalid expression
-                        if let Exp::Procedure(proc) = f? {
-                            proc_handler(&proc, rest, env)
-                        } else {
-                            return Err(Exceptions::ValueError(
+                        return Err(Exceptions::ValueError(
                             format!(
                                 "First thing in an expression should be a keyword or a function not {}",
                                 first
                             )
                             .to_string(),
                         ));
-                        }
                     }
                 }
             }
@@ -176,4 +195,15 @@ fn proc_handler(
             format!("Expected {} arguments but got {}", proc.0.len(), rest.len()).to_string(),
         ));
     }
+}
+
+pub fn func_handler(
+    function: fn(&[Exp]) -> Result<Exp, Exceptions>,
+    args: &[Exp],
+    env: &mut Environment,
+) -> Result<Exp, Exceptions> {
+    let rest_evaluated: Result<Vec<Exp>, Exceptions> = args.iter().map(|x| eval(x, env)).collect();
+    let func_result = function(&rest_evaluated?)?;
+    let eval_again = eval(&func_result, env);
+    eval_again.or_else(|_| Ok(func_result))
 }

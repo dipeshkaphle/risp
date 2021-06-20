@@ -76,6 +76,11 @@ pub fn default_env() -> Environment {
     env.insert("number?".to_string(), Exp::Func(|args| is_number(args)));
     env.insert("procedure?".to_string(), Exp::Func(|args| is_proc(args)));
     env.insert("bool?".to_string(), Exp::Func(|args| is_bool(args)));
+    env.insert("map".to_string(), Exp::Func(|args| map(args)));
+    env.insert(
+        "list".to_string(),
+        Exp::Func(|args| Ok(Exp::List(args.to_vec()))),
+    );
 
     env
 }

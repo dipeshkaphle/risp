@@ -258,18 +258,40 @@ pub fn is_number(args: &[Exp]) -> Result<Exp, Exceptions> {
 
 pub fn is_proc(args: &[Exp]) -> Result<Exp, Exceptions> {
     expect_x_args(1, "procedure?", args)?;
-    if let Exp::Func(_) = &args[0] {
+    match &args[0] {
+        Exp::Func(_) => Ok(Exp::Atom(Atom::Bool(true))),
+        Exp::Procedure(_) => Ok(Exp::Atom(Atom::Bool(true))),
+        _ => Ok(Exp::Atom(Atom::Bool(false))),
+    }
+}
+pub fn is_bool(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(1, "bool?", args)?;
+    if let Exp::Atom(Atom::Bool(_)) = &args[0] {
         Ok(Exp::Atom(Atom::Bool(true)))
     } else {
         Ok(Exp::Atom(Atom::Bool(false)))
     }
 }
-pub fn is_bool(args: &[Exp]) -> Result<Exp, Exceptions> {
-    expect_x_args(1, "procedure?", args)?;
-    if let Exp::Atom(Atom::Bool(_)) = &args[0] {
-        Ok(Exp::Atom(Atom::Bool(true)))
+
+pub fn map(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(2, "map", args)?;
+    let is_callable = get_bool(&is_proc(&args[..1])?)?;
+    if is_callable {
+        if let Exp::List(lst) = &args[1] {
+            let mut mapped_list = vec![Exp::Atom(Atom::Symbol("list".to_string()))];
+            for x in lst.iter() {
+                mapped_list.push(Exp::List(vec![args[0].clone(), x.clone()]));
+            }
+            Ok(Exp::List(mapped_list))
+        } else {
+            Err(Exceptions::ValueError(
+                "Expected a list as second argument to map".to_string(),
+            ))
+        }
     } else {
-        Ok(Exp::Atom(Atom::Bool(false)))
+        Err(Exceptions::ValueError(
+            "Expected a callable as first argument to map".to_string(),
+        ))
     }
 }
 

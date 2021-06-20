@@ -100,6 +100,18 @@ impl Environment {
     pub fn pop_stack_frame(&mut self) {
         self.maps.pop();
     }
+
+    pub fn exists(&self, key: &String) -> bool {
+        let i = &self.maps.len();
+        for map_index in (0..(*i)).rev() {
+            if self.maps[map_index].get(key).is_some() {
+                return true;
+            } else {
+                continue;
+            }
+        }
+        return false;
+    }
 }
 
 pub trait ToFloat {
