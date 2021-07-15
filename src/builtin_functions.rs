@@ -1,4 +1,5 @@
 use super::types::*;
+use std::rc::Rc;
 use std::{f64, i64};
 pub fn logical_bin_ops(args: &[Exp], f: fn(bool, bool) -> bool) -> Result<Exp, Exceptions> {
     let evaluated: Result<Vec<bool>, Exceptions> = args
@@ -132,14 +133,14 @@ pub fn append(args: &[Exp]) -> Result<Exp, Exceptions> {
     for exps in args {
         match exps {
             Exp::List(vals) => {
-                for e in vals {
+                for e in vals.as_ref() {
                     ret_list.push(e.clone());
                 }
             }
             _ => ret_list.push(exps.clone()),
         }
     }
-    Ok(Exp::List(ret_list))
+    Ok(Exp::List(Rc::new(ret_list)))
 }
 
 pub fn apply(args: &[Exp]) -> Result<Exp, Exceptions> {
@@ -162,8 +163,8 @@ pub fn apply(args: &[Exp]) -> Result<Exp, Exceptions> {
 pub fn cons(args: &[Exp]) -> Result<Exp, Exceptions> {
     expect_x_args(2, "cons", args)?;
     if let Exp::List(lst) = &args[1] {
-        let ret_list = [[args[0].clone()].to_vec(), lst.clone()].concat();
-        Ok(Exp::List(ret_list))
+        let ret_list = [[args[0].clone()].to_vec(), lst.as_ref().clone()].concat();
+        Ok(Exp::List(Rc::new(ret_list)))
     } else {
         return Err(Exceptions::ValueError(
             "Expected a list as second argument to cons. Got something else".to_string(),
@@ -187,7 +188,23 @@ fn head_tails<'a>(args: &'a [Exp]) -> Result<(&'a Exp, &'a [Exp]), Exceptions> {
         ))
     }
 }
-
+fn same_object(a: &Exp, b: &Exp) -> bool {
+    match a {
+        Exp::List(lst1) => {
+            if let Exp::List(lst2) = b {
+                lst1.as_ref() as *const Vec<Exp> == lst2.as_ref() as *const Vec<Exp>
+            } else {
+                false
+            }
+        }
+        _ => a == b,
+    }
+    // a as *const Exp == b as *const Exp
+}
+pub fn same_obj(args: &[Exp]) -> Result<Exp, Exceptions> {
+    expect_x_args(2, "equal?", args)?;
+    return Ok(Exp::Atom(Atom::Bool(same_object(&args[0], &args[1]))));
+}
 pub fn equal(args: &[Exp]) -> Result<Exp, Exceptions> {
     expect_x_args(2, "equal?", args)?;
     return Ok(Exp::Atom(Atom::Bool(&args[0] == &args[1])));
@@ -217,7 +234,7 @@ pub fn car(args: &[Exp]) -> Result<Exp, Exceptions> {
     return Ok(head_tails(args)?.0.clone());
 }
 pub fn cdr(args: &[Exp]) -> Result<Exp, Exceptions> {
-    return Ok(Exp::List(head_tails(args)?.1.to_vec()));
+    return Ok(Exp::List(Rc::new(head_tails(args)?.1.to_vec())));
 }
 pub fn is_null(args: &[Exp]) -> Result<Exp, Exceptions> {
     expect_x_args(1, "null?", args)?;
@@ -280,9 +297,9 @@ pub fn map(args: &[Exp]) -> Result<Exp, Exceptions> {
         if let Exp::List(lst) = &args[1] {
             let mut mapped_list = vec![Exp::Atom(Atom::Symbol("list".to_string()))];
             for x in lst.iter() {
-                mapped_list.push(Exp::List(vec![args[0].clone(), x.clone()]));
+                mapped_list.push(Exp::List(Rc::new(vec![args[0].clone(), x.clone()])));
             }
-            Ok(Exp::List(mapped_list))
+            Ok(Exp::List(Rc::new(mapped_list)))
         } else {
             Err(Exceptions::ValueError(
                 "Expected a list as second argument to map".to_string(),

@@ -1,4 +1,5 @@
 use super::types::*;
+use std::rc::Rc;
 fn tokenize(chars: &str) -> Vec<String> {
     chars
         .replace("(", "( ")
@@ -38,14 +39,14 @@ fn read_from_tokens(tokens: &mut Vec<String>) -> Result<Exp, Exceptions> {
             }
         }
         tokens.remove(0);
-        return Ok(Exp::List(l));
+        return Ok(Exp::List(Rc::new(l)));
     } else if token == ")" {
         return Err(Exceptions::SyntaxError("Unexpected )".to_string()));
     } else if token == "'" {
         let mut lst = vec![];
         lst.push(Exp::Atom(Atom::Symbol("quote".to_string())));
         lst.push(read_from_tokens(tokens).unwrap());
-        return Ok(Exp::List(lst));
+        return Ok(Exp::List(Rc::new(lst)));
     } else {
         return Ok(Exp::Atom(atom(token)));
     }

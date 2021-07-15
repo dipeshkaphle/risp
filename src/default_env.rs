@@ -1,6 +1,7 @@
 use super::builtin_functions::*;
 use super::types::*;
 use std::f64;
+use std::rc::Rc;
 
 pub fn default_env() -> Environment {
     let mut env: Environment = Environment::new();
@@ -61,6 +62,7 @@ pub fn default_env() -> Environment {
     env.insert("cdr".to_string(), Exp::Func(|args| cdr(args)));
     env.insert("apply".to_string(), Exp::Func(|args| apply(args)));
     env.insert("cons".to_string(), Exp::Func(|args| cons(args)));
+    env.insert("same_obj?".to_string(), Exp::Func(|args| same_obj(args)));
     env.insert("equal?".to_string(), Exp::Func(|args| equal(args)));
     env.insert("length".to_string(), Exp::Func(|args| length(args)));
     env.insert("list?".to_string(), Exp::Func(|args| is_list(args)));
@@ -79,7 +81,7 @@ pub fn default_env() -> Environment {
     env.insert("map".to_string(), Exp::Func(|args| map(args)));
     env.insert(
         "list".to_string(),
-        Exp::Func(|args| Ok(Exp::List(args.to_vec()))),
+        Exp::Func(|args| Ok(Exp::List(Rc::new(args.to_vec())))),
     );
 
     env

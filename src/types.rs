@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::rc::Rc;
 
 pub type Symbol = String;
 pub type Env = HashMap<String, Exp>;
@@ -24,7 +25,7 @@ pub enum Atom {
 #[derive(Clone)]
 pub enum Exp {
     Atom(Atom),
-    List(Vec<Exp>),
+    List(Rc<Vec<Exp>>),
     Func(fn(&[Exp]) -> Result<Exp, Exceptions>),
     Procedure((Vec<String>, Box<Exp>)),
 }
