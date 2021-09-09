@@ -1,13 +1,62 @@
 use super::types::*;
 use std::rc::Rc;
 fn tokenize(chars: &str) -> Vec<String> {
-    chars
-        .replace("(", "( ")
-        .replace(")", " )")
-        .replace("'", "' ")
-        .split_whitespace()
-        .map(|x| String::from(x))
-        .collect()
+    let mut toks = vec![];
+    let mut i = 0;
+    let characters: Vec<char> = chars.chars().collect();
+    while i < characters.len() {
+        match characters[i] {
+            '(' => toks.push("(".to_string()),
+            ')' => toks.push(")".to_string()),
+            '"' => {
+                toks.push("\"".to_string());
+                i += 1;
+                let mut s = String::new();
+                while i < characters.len() && characters[i] != '"' {
+                    match characters[i] {
+                        '\\' => {
+                            if i + 1 < characters.len() {
+                                s.push(characters[i + 1]);
+                                i += 1;
+                            } else {
+                                panic!("Invalid escape '\'");
+                            }
+                        }
+                        c => {
+                            s.push(c);
+                        }
+                    }
+                    i += 1;
+                }
+                toks.push(s);
+            }
+            '\'' => {
+                toks.push("'".to_string());
+            }
+            _ => {
+                if characters[i].is_whitespace() {
+                    while i < characters.len() && characters[i].is_whitespace() {
+                        i += 1;
+                    }
+                    i -= 1;
+                } else {
+                    let mut s = String::new();
+                    while i < characters.len()
+                        && (!characters[i].is_whitespace()
+                            && characters[i] != ')'
+                            && characters[i] != '(')
+                    {
+                        s.push(characters[i]);
+                        i += 1;
+                    }
+                    i -= 1;
+                    toks.push(s);
+                }
+            }
+        }
+        i += 1;
+    }
+    toks
 }
 
 fn atom(token: String) -> Atom {
@@ -47,6 +96,10 @@ fn read_from_tokens(tokens: &mut Vec<String>) -> Result<Exp, Exceptions> {
         lst.push(Exp::Atom(Atom::Symbol("quote".to_string())));
         lst.push(read_from_tokens(tokens).unwrap());
         return Ok(Exp::List(Rc::new(lst)));
+    } else if token == "\"" {
+        let s = tokens[0].clone();
+        tokens.remove(0);
+        return Ok(Exp::Str(s));
     } else {
         return Ok(Exp::Atom(atom(token)));
     }

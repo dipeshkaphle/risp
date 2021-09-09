@@ -97,6 +97,8 @@ pub fn eval(exp: &Exp, env: &mut Environment) -> Result<Exp, Exceptions> {
                                 ));
                             }
                         }
+                        "print!" => printer(rest, env, false),
+                        "println!" => printer(rest, env, true),
                         _ => {
                             // must be a function
                             match f? {
@@ -125,6 +127,7 @@ pub fn eval(exp: &Exp, env: &mut Environment) -> Result<Exp, Exceptions> {
                 }
             }
         }
+        Exp::Str(s) => Ok(Exp::Str(s.clone())),
         _ => Err(Exceptions::ValueError("Invalid form".to_string())),
     }
 }
@@ -197,7 +200,7 @@ fn proc_handler(
     }
 }
 
-pub fn func_handler(
+fn func_handler(
     function: fn(&[Exp]) -> Result<Exp, Exceptions>,
     args: &[Exp],
     env: &mut Environment,
@@ -206,4 +209,21 @@ pub fn func_handler(
     let func_result = function(&rest_evaluated?)?;
     let eval_again = eval(&func_result, env);
     eval_again.or_else(|_| Ok(func_result))
+}
+
+fn printer(args: &[Exp], env: &mut Environment, new_line: bool) -> Result<Exp, Exceptions> {
+    let rest_evaluated: Result<Vec<Exp>, Exceptions> = args.iter().map(|x| eval(x, env)).collect();
+    let printable_form = rest_evaluated
+        .unwrap()
+        .iter()
+        .map(|x| format!("{}", x))
+        .collect::<Vec<String>>()
+        .join(" ");
+    if !new_line {
+        print!("{}", printable_form);
+    } else {
+        println!("{}", printable_form);
+    }
+    Ok(Exp::Str(printable_form))
+    // unimplemented!()
 }

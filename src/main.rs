@@ -17,7 +17,7 @@ fn main() {
         let s = input();
         match parse_and_eval(s, &mut def_env) {
             Ok(x) => println!("=> {}", x),
-            Err(x) => println!("{:?}", x),
+            Err(x) => eprintln!("{:?}", x),
         }
     }
 }

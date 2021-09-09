@@ -26,6 +26,7 @@ pub enum Atom {
 pub enum Exp {
     Atom(Atom),
     List(Rc<Vec<Exp>>),
+    Str(String),
     Func(fn(&[Exp]) -> Result<Exp, Exceptions>),
     Procedure((Vec<String>, Box<Exp>)),
 }
@@ -41,28 +42,35 @@ impl PartialEq for Exp {
                 if let Exp::Func(other_at) = &other {
                     return (*other_at as usize) == (*x as usize);
                 } else {
-                    return false;
+                    panic!("Mismatch in types in lhs and rhs, lhs is a Func but rhs is not");
                 }
             }
             Exp::Procedure(p) => {
                 if let Exp::Procedure(other_at) = &other {
                     return p == other_at;
                 } else {
-                    return false;
+                    panic!("Mismatch in types in lhs and rhs, lhs is a Procedure but rhs is not");
                 }
             }
             Exp::Atom(at) => {
                 if let Exp::Atom(other_at) = other {
                     return at == other_at;
                 } else {
-                    return false;
+                    panic!("Mismatch in types in lhs and rhs, lhs is an Atom but rhs is not");
+                }
+            }
+            Exp::Str(s) => {
+                if let Exp::Str(t) = other {
+                    return s == t;
+                } else {
+                    panic!("Mismatch in types in lhs and rhs, lhs is a string but rhs is not");
                 }
             }
             Exp::List(lst) => {
                 if let Exp::List(other_lst) = other {
                     return lst == other_lst;
                 } else {
-                    return false;
+                    panic!("Mismatch in types in lhs and rhs, lhs is a list but rhs is not");
                 }
             }
         }
@@ -186,6 +194,7 @@ impl fmt::Display for Exp {
                     x.iter().map(|a| format!("{}", a).to_string()).collect();
                 "(".to_string() + &str_form.join(" ") + ")"
             }
+            Exp::Str(s) => s.clone(),
             Exp::Func(_) => "Func".to_string(),
             Exp::Procedure(_) => "Proc".to_string(),
         };
