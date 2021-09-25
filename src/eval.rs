@@ -125,12 +125,21 @@ pub fn eval(exp: &Exp, env: &mut Environment) -> Result<Exp, Exceptions> {
                                 .to_string(),
                             ));
                         }
-                        Ok(g) => {
-                            let mut new_exp_internals = vec![g];
-                            new_exp_internals.append(&mut rest.to_vec());
-                            let new_exp = Exp::List(Rc::new(new_exp_internals));
-                            return eval(&new_exp, env);
-                        }
+                        Ok(g) => match &g {
+                            Exp::Func(_) => {
+                                let mut new_exp_internals = vec![g];
+                                new_exp_internals.append(&mut rest.to_vec());
+                                let new_exp = Exp::List(Rc::new(new_exp_internals));
+                                return eval(&new_exp, env);
+                            }
+                            Exp::Procedure(_) => {
+                                let mut new_exp_internals = vec![g];
+                                new_exp_internals.append(&mut rest.to_vec());
+                                let new_exp = Exp::List(Rc::new(new_exp_internals));
+                                return eval(&new_exp, env);
+                            }
+                            _ => Ok(exp.clone()),
+                        },
                     },
                 }
             }

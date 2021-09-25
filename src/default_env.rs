@@ -81,7 +81,10 @@ pub fn default_env() -> Environment {
     env.insert("map".to_string(), Exp::Func(|args| map(args)));
     env.insert(
         "list".to_string(),
-        Exp::Func(|args| Ok(Exp::List(Rc::new(args.to_vec())))),
+        Exp::Func(|args| {
+            let x = Exp::List(Rc::new(args.to_vec()));
+            Ok(x)
+        }),
     );
 
     env

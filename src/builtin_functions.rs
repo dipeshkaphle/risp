@@ -292,6 +292,7 @@ pub fn is_bool(args: &[Exp]) -> Result<Exp, Exceptions> {
 
 pub fn map(args: &[Exp]) -> Result<Exp, Exceptions> {
     expect_x_args(2, "map", args)?;
+    println!("hi");
     let is_callable = get_bool(&is_proc(&args[..1])?)?;
     if is_callable {
         if let Exp::List(lst) = &args[1] {
