@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::parser::*;
 use super::types::*;
@@ -114,16 +115,23 @@ pub fn eval(exp: &Exp, env: &mut Environment) -> Result<Exp, Exceptions> {
                     },
                     Exp::Procedure(proc) => proc_handler(proc, rest, env),
                     Exp::Func(func) => func_handler(*func, rest, env),
-                    _ => {
-                        // invalid expression
-                        return Err(Exceptions::ValueError(
-                            format!(
-                                "First thing in an expression should be a keyword or a function not {}",
-                                first
-                            )
-                            .to_string(),
-                        ));
-                    }
+                    _ => match f {
+                        Err(_) => {
+                            return Err(Exceptions::ValueError(
+                                format!(
+                                    "First thing in an expression should be a keyword or a function not {}",
+                                    first
+                                )
+                                .to_string(),
+                            ));
+                        }
+                        Ok(g) => {
+                            let mut new_exp_internals = vec![g];
+                            new_exp_internals.append(&mut rest.to_vec());
+                            let new_exp = Exp::List(Rc::new(new_exp_internals));
+                            return eval(&new_exp, env);
+                        }
+                    },
                 }
             }
         }
@@ -157,18 +165,59 @@ fn if_handler(args: &[Exp], env: &mut Environment) -> Result<Exp, Exceptions> {
 fn define_handler(args: &[Exp], env: &mut Environment) -> Result<Exp, Exceptions> {
     if args.len() == 3 {
         let (symbol, exp) = (&args[1], &args[2]);
-        if let Exp::Atom(Atom::Symbol(x)) = symbol {
-            let evaluated_exp = eval(exp, env)?;
-            env.insert(x.clone(), evaluated_exp.clone());
-            Ok(evaluated_exp)
-        } else {
-            return Err(Exceptions::ValueError(
-                format!(
-                    "define expression should have its first argument as a symbol not a {}",
-                    symbol
-                )
-                .to_string(),
-            ));
+        match symbol {
+            Exp::Atom(Atom::Symbol(x)) => {
+                /*
+                 * (define f 10)
+                 * (define g (lambda (x) (+ x x)))
+                 */
+                let evaluated_exp = eval(exp, env)?;
+                env.insert(x.clone(), evaluated_exp.clone());
+                return Ok(evaluated_exp);
+            }
+            Exp::List(lst) => {
+                /*
+                 * (define (f x y) (+ x y))
+                 */
+                let all_are_symbols = lst.iter().all(|x| match x {
+                    Exp::Atom(Atom::Symbol(_)) => true,
+                    _ => false,
+                });
+                if !all_are_symbols {
+                    return Err(Exceptions::ValueError(
+                            format!("define expression of form (define ( (ident )+ ) (body) ). This define expression '{}' is not a satisfying '(ident)+' property ",Exp::List(Rc::new(lst.to_vec()))).to_string()
+                            ));
+                }
+
+                let (func_name_exp, func_args) = lst.split_first().unwrap();
+                let params = Rc::new(func_args.to_vec());
+                let params_as_strings: Result<Vec<String>, Exceptions> = params
+                    .iter()
+                    .map(|x| {
+                        if let Exp::Atom(Atom::Symbol(y)) = x {
+                            return Ok(y.clone());
+                        } else {
+                            return Err(Exceptions::ValueError(
+                                "non symbol passed in a lambda parameters list".to_string(),
+                            ));
+                        }
+                    })
+                    .collect();
+                /*
+                 * This is always true because we checked already with all_are_symbols
+                 */
+
+                let proc = Exp::Procedure((params_as_strings?, Box::new(exp.clone())));
+                if let Exp::Atom(Atom::Symbol(func_name)) = func_name_exp {
+                    env.insert(func_name.clone(), proc.clone());
+                }
+                Ok(proc)
+            }
+            _ => {
+                return Err(Exceptions::ValueError(
+                    format!("Invalid define expression {}", symbol).to_string(),
+                ));
+            }
         }
     } else {
         return Err(Exceptions::ValueError(
