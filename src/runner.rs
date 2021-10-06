@@ -1,22 +1,17 @@
-use std::ffi::{CStr, CString};
-use std::io::{self, Read, Write};
-use std::os::raw::c_char;
+use std::io::{self, Write};
+
 use std::process::exit;
 
 use super::default_env::*;
 use super::eval::parse_and_eval;
-use linenoise::ffi::{linenoise, linenoiseHistoryAdd, linenoiseHistoryLoad, linenoiseHistorySave};
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
 
-use std::env;
-use std::fs::File;
+const RISP_HISTORY_FILE: &'static str = ".risp_history";
 
-fn add_to_history(x: &str, filename_cstr: &CStr) {
-    unsafe {
-        let c_string = CString::new(x).unwrap();
-        let c_str = CStr::from_bytes_with_nul_unchecked(c_string.as_bytes_with_nul());
-        linenoiseHistoryAdd(c_str.as_ptr() as *const i8);
-        linenoiseHistorySave(filename_cstr.as_ptr() as *const c_char);
-    }
+fn add_to_history_rl(x: &str, rl: &mut Editor<()>) {
+    rl.add_history_entry(x);
+    rl.save_history(RISP_HISTORY_FILE).unwrap();
 }
 
 enum ParensStatus {
@@ -55,15 +50,24 @@ fn line_status(s: &str, stack: &mut Vec<char>) -> ParensStatus {
     }
 }
 
-fn handle_first_line(line: Option<String>, stack: &mut Vec<char>) -> Option<LineStatus> {
-    // let line = linenoise::input(">>>");
+fn handle_first_line(
+    line: Result<String, ReadlineError>,
+    stack: &mut Vec<char>,
+) -> Option<LineStatus> {
     let mut s = String::new();
-    if line.is_none() {
-        return None;
-    } else {
-        s += &line.clone().unwrap();
-        if s.is_empty() {
-            return Some(LineStatus::ValidSExpr(s));
+    match line {
+        Ok(ln) => {
+            s += &ln;
+            if s.is_empty() {
+                return Some(LineStatus::ValidSExpr(s));
+            }
+        }
+        Err(ReadlineError::Eof) => {
+            println!("Exiting!!!");
+            exit(0);
+        }
+        Err(_) => {
+            return None;
         }
     }
     if s.as_str() == "exit" {
@@ -84,11 +88,18 @@ fn handle_first_line(line: Option<String>, stack: &mut Vec<char>) -> Option<Line
     }
 }
 
-fn handle_non_first_lines(line: Option<String>, stack: &mut Vec<char>) -> Option<LineStatus> {
-    // let line = linenoise::input("...");
+fn handle_non_first_lines(
+    line: Result<String, ReadlineError>,
+    stack: &mut Vec<char>,
+) -> Option<LineStatus> {
     let mut s = String::new();
-    if line.is_none() {
-        return None;
+    match line {
+        Err(ReadlineError::Interrupted) => return None,
+        Err(ReadlineError::Eof) => {
+            println!("Exiting");
+            exit(0);
+        }
+        _ => {}
     }
     s += &line.unwrap();
     let status = line_status(s.as_str(), stack);
@@ -106,11 +117,9 @@ fn handle_non_first_lines(line: Option<String>, stack: &mut Vec<char>) -> Option
 }
 
 pub fn repl() -> Option<String> {
-    let filename = CString::new(".risp_history").unwrap();
-    let filename_cstr =
-        unsafe { CStr::from_bytes_with_nul_unchecked(filename.as_bytes_with_nul()) };
-    unsafe {
-        linenoiseHistoryLoad(filename_cstr.as_ptr() as *const c_char);
+    let mut rl = Editor::<()>::new();
+    if rl.load_history(RISP_HISTORY_FILE).is_err() {
+        println!("No history found");
     }
 
     io::stdout().flush().unwrap();
@@ -119,29 +128,30 @@ pub fn repl() -> Option<String> {
 
     let mut s = String::new();
     let mut ret_none = false;
-    let line = linenoise::input(">>>");
+    let line = rl.readline(">>>");
     let first_line = handle_first_line(line, &mut stack);
     if first_line.is_none() {
         return None;
     }
     match first_line.unwrap() {
         LineStatus::EXIT => {
-            add_to_history("exit", filename_cstr);
+            add_to_history_rl("exit", &mut rl);
+            println!("Exiting!!!");
             exit(0);
         }
         LineStatus::GoNextLine(x) => {
-            add_to_history(x.as_str(), filename_cstr);
+            add_to_history_rl(x.as_str(), &mut rl);
             s += &x;
             s.push('\n');
         }
         LineStatus::ValidSExpr(x) | LineStatus::InvalidSExpr(x) => {
-            add_to_history(x.as_str(), filename_cstr);
+            add_to_history_rl(x.as_str(), &mut rl);
             return Some(x);
         }
     }
 
     loop {
-        let line = linenoise::input("...");
+        let line = rl.readline("...");
         let line = handle_non_first_lines(line, &mut stack);
         if line.is_none() {
             ret_none = true;
@@ -151,12 +161,12 @@ pub fn repl() -> Option<String> {
             // doesnt make sense
             LineStatus::EXIT => unimplemented!(),
             LineStatus::GoNextLine(x) => {
-                add_to_history(x.as_str(), filename_cstr);
+                add_to_history_rl(x.as_str(), &mut rl);
                 s += &x;
                 s.push('\n');
             }
             LineStatus::ValidSExpr(x) | LineStatus::InvalidSExpr(x) => {
-                add_to_history(x.as_str(), filename_cstr);
+                add_to_history_rl(x.as_str(), &mut rl);
                 s += &x;
                 break;
             }
@@ -179,7 +189,10 @@ pub fn run_from_source_code(program: String) {
         let mut stack: Vec<char> = Vec::new();
         let mut s = String::new();
 
-        let first_line = lines.last().map(|x| x.clone());
+        let first_line = lines
+            .last()
+            .map(|x| x.clone())
+            .ok_or(ReadlineError::Interrupted);
         lines.pop();
         let first_line = handle_first_line(first_line, &mut stack);
         match first_line.unwrap() {
@@ -200,7 +213,10 @@ pub fn run_from_source_code(program: String) {
         }
 
         loop {
-            let next_line = lines.last().map(|x| x.clone());
+            let next_line = lines
+                .last()
+                .map(|x| x.clone())
+                .ok_or(ReadlineError::Interrupted);
             line_num += 1;
             let next_line = handle_non_first_lines(next_line, &mut stack);
             if next_line.is_none() {
